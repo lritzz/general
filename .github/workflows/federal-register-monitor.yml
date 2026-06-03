@@ -1,0 +1,64 @@
+name: Federal Register Proposed Rule Monitor
+
+on:
+  schedule:
+    # Run every hour on weekdays (proposed rules publish Mon–Fri)
+    - cron: '0 * * * 1-5'
+    # Also run once on weekends to catch any late postings
+    - cron: '0 14 * * 0,6'
+  workflow_dispatch:
+    inputs:
+      init:
+        description: 'Seed state without sending emails (use on first run)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-rules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a token that can push back to the branch
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Check Federal Register for new proposed rules
+        env:
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: lucy.ritzmann@governingforimpact.org
+        run: |
+          if [ "${{ inputs.init }}" = "true" ]; then
+            python scripts/check_federal_register.py --init
+          else
+            python scripts/check_federal_register.py
+          fi
+
+      - name: Commit updated state
+        run: |
+          git config user.name "federal-register-monitor[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/
+          if git diff --staged --quiet; then
+            echo "No state changes to commit."
+          else
+            git commit -m "chore: update Federal Register state [skip ci]"
+            git push origin HEAD
+          fi
