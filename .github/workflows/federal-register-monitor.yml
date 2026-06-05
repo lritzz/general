@@ -27,14 +27,8 @@ jobs:
           # Use a token that can push back to the branch
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
       - name: Install dependencies
-        run: pip install requests
+        run: python3 -m pip install --quiet -r requirements.txt
 
       - name: Check Federal Register for new proposed rules
         env:
@@ -46,9 +40,9 @@ jobs:
           EMAIL_TO: lucy.ritzmann@governingforimpact.org
         run: |
           if [ "${{ inputs.init }}" = "true" ]; then
-            python scripts/check_federal_register.py --init
+            python3 scripts/check_federal_register.py --init
           else
-            python scripts/check_federal_register.py
+            python3 scripts/check_federal_register.py
           fi
 
       - name: Commit updated state
