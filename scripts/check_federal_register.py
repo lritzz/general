@@ -29,6 +29,7 @@ def fetch_latest_rules(per_page=5):
         ("fields[]", "html_url"),
         ("fields[]", "abstract"),
         ("fields[]", "document_number"),
+        ("fields[]", "agency_names"),
     ]
     resp = requests.get(FR_API, params=params, headers=HEADERS, timeout=30)
     resp.raise_for_status()
@@ -48,21 +49,48 @@ def save_seen(doc_numbers):
     STATE_FILE.write_text("\n".join(sorted(doc_numbers)) + "\n")
 
 
-def plain_language_summary(abstract, title):
-    """Trim and lightly clean the Federal Register abstract for email."""
+def plain_language_summary(abstract, title, agency_names=None):
+    """Generate a 2–3 sentence plain-language summary using Claude API if available."""
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    agency_str = ", ".join(agency_names) if agency_names else "a federal agency"
+
+    if anthropic_key:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=anthropic_key)
+            prompt = (
+                f"The following is the abstract of a proposed federal rule titled "
+                f'"{title}" published by {agency_str} in the Federal Register.\n\n'
+                f"Abstract:\n{abstract or '(no abstract provided)'}\n\n"
+                "Write a 2–3 sentence plain-language summary that explains: "
+                "(1) what the rule proposes to do and (2) who it affects. "
+                "Avoid jargon. Be direct and factual. Return only the summary, no preamble."
+            )
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=200,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return message.content[0].text.strip()
+        except Exception as exc:
+            print(f"⚠️  Claude API summary failed ({exc}); falling back to abstract.")
+
+    # Fallback: use the abstract, trimmed to a reasonable length
     if not abstract:
-        return f"This proposed rule concerns: {title}. See the full text for details."
-    # Federal Register abstracts are already concise; truncate if unusually long
-    if len(abstract) > 1000:
-        abstract = abstract[:997] + "..."
-    return abstract
+        return f"This proposed rule from {agency_str} concerns: {title}. See the full text for details."
+    sentences = abstract.replace("\n", " ").split(". ")
+    summary = ". ".join(sentences[:3]).strip()
+    if not summary.endswith("."):
+        summary += "."
+    return summary
 
 
 def build_email(rule):
     title = rule.get("title", "Unknown Title")
     pub_date = rule.get("publication_date", "Unknown Date")
     url = rule.get("html_url", "N/A")
-    summary = plain_language_summary(rule.get("abstract"), title)
+    agency_names = rule.get("agency_names", [])
+    summary = plain_language_summary(rule.get("abstract"), title, agency_names)
 
     subject = f"New Federal Register proposed rule: {title}"
     body = f"""\
@@ -132,7 +160,6 @@ def main():
         return
 
     if init_mode:
-        # Seed state silently — no emails on first setup
         all_numbers = {r["document_number"] for r in rules}
         save_seen(seen | all_numbers)
         print(

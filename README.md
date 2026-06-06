@@ -13,7 +13,7 @@ Automatically emails `lucy.ritzmann@governingforimpact.org` whenever a new propo
 **Subject:** `New Federal Register proposed rule: <title>`
 
 **Body:**
-- Plain-language summary (from the Federal Register abstract)
+- Plain-language 2–3 sentence summary (written by Claude if `ANTHROPIC_API_KEY` is set; otherwise derived from the Federal Register abstract)
 - Publication date
 - Direct link to the full rule text
 
@@ -21,13 +21,14 @@ Automatically emails `lucy.ritzmann@governingforimpact.org` whenever a new propo
 
 Go to **Settings → Secrets and variables → Actions** and add:
 
-| Secret | Example |
-|---|---|
-| `EMAIL_HOST` | `smtp.gmail.com` |
-| `EMAIL_PORT` | `587` |
-| `EMAIL_USER` | `yourname@gmail.com` |
-| `EMAIL_PASSWORD` | App password (not your login password) |
-| `EMAIL_FROM` | `yourname@gmail.com` (optional — defaults to EMAIL_USER) |
+| Secret | Example | Required? |
+|---|---|---|
+| `EMAIL_HOST` | `smtp.gmail.com` | Yes |
+| `EMAIL_PORT` | `587` | Yes |
+| `EMAIL_USER` | `yourname@gmail.com` | Yes |
+| `EMAIL_PASSWORD` | App password (not your login password) | Yes |
+| `EMAIL_FROM` | `yourname@gmail.com` | No (defaults to EMAIL_USER) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | No (enables plain-language summaries via Claude) |
 
 ### Gmail app password
 
