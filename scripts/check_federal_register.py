@@ -82,18 +82,19 @@ https://github.com/lritzz/nprms/actions
 
 
 def send_email(subject, body):
+    """Send email; returns True if sent, False if SMTP secrets are not configured."""
     host = os.environ.get("EMAIL_HOST", "")
-    port = int(os.environ.get("EMAIL_PORT", "587"))
+    port = int(os.environ.get("EMAIL_PORT") or "587")
     user = os.environ.get("EMAIL_USER", "")
     password = os.environ.get("EMAIL_PASSWORD", "")
     from_addr = os.environ.get("EMAIL_FROM") or user
 
     if not all([host, user, password]):
         print(
-            "⚠️  Email secrets not configured. Printing draft instead:\n"
+            "⚠️  Email secrets not configured (rule will be retried next run):\n"
             f"To: {EMAIL_TO}\nSubject: {subject}\n\n{body}"
         )
-        return
+        return False
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -109,6 +110,7 @@ def send_email(subject, body):
 
     print(f"✅ Email sent to {EMAIL_TO}")
     print(f"   Subject: {subject}")
+    return True
 
 
 def main():
@@ -143,9 +145,12 @@ def main():
 
     for rule in new_rules:
         subject, body = build_email(rule)
-        send_email(subject, body)
-        seen.add(rule["document_number"])
-        print(f"Processed: {rule['document_number']} — {rule.get('title', '')[:80]}")
+        sent = send_email(subject, body)
+        if sent:
+            seen.add(rule["document_number"])
+            print(f"Emailed: {rule['document_number']} — {rule.get('title', '')[:80]}")
+        else:
+            print(f"Skipped (no email secrets): {rule['document_number']} — {rule.get('title', '')[:80]}")
 
     save_seen(seen)
 
