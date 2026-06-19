@@ -83,7 +83,6 @@ https://github.com/lritzz/nprms/actions
 
 def send_email(subject, body):
     host = os.environ.get("EMAIL_HOST", "")
-    port = int(os.environ.get("EMAIL_PORT", "587"))
     user = os.environ.get("EMAIL_USER", "")
     password = os.environ.get("EMAIL_PASSWORD", "")
     from_addr = os.environ.get("EMAIL_FROM") or user
@@ -94,6 +93,8 @@ def send_email(subject, body):
             f"To: {EMAIL_TO}\nSubject: {subject}\n\n{body}"
         )
         return
+
+    port = int(os.environ.get("EMAIL_PORT") or "587")
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
