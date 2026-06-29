@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✈ Taylor's Guest List Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0f;
+      color: #f0e6ff;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a0533 0%, #2d0b5e 50%, #1a0533 100%);
+      border-bottom: 1px solid #6b21a8;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 20px,
+        rgba(168,85,247,0.03) 20px,
+        rgba(168,85,247,0.03) 21px
+      );
+    }
+
+    .header-icon {
+      font-size: 2.5rem;
+      position: relative;
+    }
+
+    .header-text { position: relative; }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #e879f9, #a855f7, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: #a78bfa;
+      margin-top: 2px;
+    }
+
+    .disclaimer {
+      position: relative;
+      margin-left: auto;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.4);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      color: #fca5a5;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      height: calc(100vh - 76px);
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      background: #0f0a1e;
+      border-right: 1px solid #2d1b69;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      background: #150d2e;
+      border-bottom: 1px solid #2d1b69;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #c084fc;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse-green 1.5s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px;
+      background: #2d1b69;
+      border-bottom: 1px solid #2d1b69;
+    }
+
+    .stat {
+      background: #0f0a1e;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #e879f9;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: #7c3aed;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    .jet-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .jet-list::-webkit-scrollbar { width: 4px; }
+    .jet-list::-webkit-scrollbar-track { background: transparent; }
+    .jet-list::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 2px; }
+
+    .jet-card {
+      background: #150d2e;
+      border: 1px solid #2d1b69;
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .jet-card:hover, .jet-card.active {
+      border-color: #7c3aed;
+      background: #1e1040;
+      transform: translateX(2px);
+    }
+
+    .jet-card.active {
+      border-color: #a855f7;
+      box-shadow: 0 0 0 1px #a855f7, 0 4px 20px rgba(168,85,247,0.2);
+    }
+
+    .jet-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .celeb-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .celeb-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #f0e6ff;
+    }
+
+    .jet-reg {
+      font-size: 0.72rem;
+      color: #7c3aed;
+      font-family: monospace;
+      margin-top: 1px;
+    }
+
+    .status-badge {
+      margin-left: auto;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-airborne {
+      background: rgba(74,222,128,0.15);
+      color: #4ade80;
+      border: 1px solid rgba(74,222,128,0.3);
+    }
+
+    .status-grounded {
+      background: rgba(251,191,36,0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+
+    .status-approaching {
+      background: rgba(96,165,250,0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(96,165,250,0.3);
+    }
+
+    .jet-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .detail-item {
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      padding: 6px 8px;
+    }
+
+    .detail-label {
+      font-size: 0.62rem;
+      color: #6d28d9;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-value {
+      font-size: 0.82rem;
+      color: #e2d9f3;
+      margin-top: 1px;
+      font-weight: 600;
+    }
+
+    .route-line {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #2d1b69;
+      font-size: 0.75rem;
+      color: #a78bfa;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .route-arrow { color: #7c3aed; }
+
+    /* MAP */
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #0a0a0f;
+    }
+
+    /* Leaflet dark overrides */
+    .leaflet-container {
+      background: #060410 !important;
+    }
+
+    /* Custom popup */
+    .leaflet-popup-content-wrapper {
+      background: #1a0d35;
+      border: 1px solid #7c3aed;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(124,58,237,0.3);
+      color: #f0e6ff;
+    }
+
+    .leaflet-popup-tip { background: #1a0d35; }
+
+    .popup-content { padding: 4px; min-width: 200px; }
+    .popup-name { font-weight: 800; font-size: 1rem; margin-bottom: 4px; }
+    .popup-detail { font-size: 0.8rem; color: #c084fc; margin: 2px 0; }
+    .popup-status { font-size: 0.75rem; margin-top: 6px; padding: 4px 8px; border-radius: 20px; display: inline-block; }
+
+    /* Plane marker */
+    .plane-marker {
+      background: none;
+      border: none;
+    }
+
+    .plane-icon {
+      font-size: 1.4rem;
+      filter: drop-shadow(0 0 6px rgba(168,85,247,0.8));
+      transition: transform 0.3s;
+    }
+
+    .destination-marker {
+      width: 14px;
+      height: 14px;
+      background: #e879f9;
+      border: 2px solid #f0e6ff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(232,121,249,0.6);
+    }
+
+    /* Update ticker */
+    .ticker {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #150d2e;
+      border-top: 1px solid #2d1b69;
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      color: #a78bfa;
+      overflow: hidden;
+      height: 34px;
+      z-index: 1000;
+    }
+
+    .ticker-inner {
+      white-space: nowrap;
+      animation: ticker-scroll 60s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes ticker-scroll {
+      0% { transform: translateX(100vw); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .ticker-item { margin-right: 80px; }
+    .ticker-item span { color: #e879f9; font-weight: 600; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 90px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: #1a0d35;
+      border: 1px solid #7c3aed;
+      border-radius: 10px;
+      padding: 12px 16px;
+      max-width: 300px;
+      font-size: 0.8rem;
+      color: #f0e6ff;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+      animation: toast-in 0.3s ease, toast-out 0.3s ease 3.7s forwards;
+    }
+
+    .toast-title { font-weight: 700; color: #e879f9; margin-bottom: 3px; }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* Legend */
+    .map-legend {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: rgba(15,10,30,0.92);
+      border: 1px solid #2d1b69;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.75rem;
+      color: #a78bfa;
+      backdrop-filter: blur(8px);
+    }
+
+    .legend-title {
+      font-weight: 700;
+      color: #c084fc;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: 50vh 50vh; }
+      header { padding: 12px; }
+      h1 { font-size: 1.1rem; }
+      .disclaimer { display: none; }
+      .map-legend { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">💍✈</div>
+  <div class="header-text">
+    <h1>Taylor's Wedding Guest Jet Tracker</h1>
+    <div class="subtitle">Simulated flight tracking · Entertainment purposes only · Not real data</div>
+  </div>
+  <div class="disclaimer">
+    ⚠️ <strong>Fictional / Simulated</strong> — All flight data, positions, and routes are randomly generated for entertainment. No real aircraft data is used.
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Celebrity Jets</div>
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        SIMULATED LIVE
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value" id="stat-airborne">0</div>
+        <div class="stat-label">Airborne</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Jets Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-co2">0t</div>
+        <div class="stat-label">Sim CO₂</div>
+      </div>
+    </div>
+
+    <div class="jet-list" id="jet-list"></div>
+  </div>
+
+  <div style="position: relative;">
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-item"><span style="font-size:1rem">✈</span> Airborne</div>
+      <div class="legend-item"><span style="font-size:1rem">🛬</span> Approaching</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e879f9"></div> Destination (Nashville)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Current position</div>
+    </div>
+  </div>
+</div>
+
+<div class="ticker">
+  <div class="ticker-inner" id="ticker-inner"></div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+const DESTINATION = { lat: 36.1627, lng: -86.7816, name: 'Nashville, TN' }; // Fictional wedding location
+
+const CELEBRITIES = [
+  {
+    id: 'beyonce',
+    name: 'Beyoncé & Jay-Z',
+    emoji: '👑',
+    color: '#fbbf24',
+    reg: 'N-QH4B',
+    aircraft: 'Boeing 767 (Luxury)',
+    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
+    status: 'airborne',
+    progress: 0.62,
+    speed: '520 mph',
+    altitude: '38,000 ft',
+    co2: 42,
+  },
+  {
+    id: 'blake',
+    name: 'Blake Lively & Ryan Reynolds',
+    emoji: '🎬',
+    color: '#60a5fa',
+    reg: 'N-BL7R',
+    aircraft: 'Gulfstream G650',
+    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
+    status: 'approaching',
+    progress: 0.88,
+    speed: '480 mph',
+    altitude: '22,000 ft',
+    co2: 18,
+  },
+  {
+    id: 'selena',
+    name: 'Selena Gomez',
+    emoji: '🌸',
+    color: '#f9a8d4',
+    reg: 'N-SG13',
+    aircraft: 'Bombardier Global 6000',
+    origin: { lat: 32.7767, lng: -96.797, name: 'Dallas, TX' },
+    status: 'grounded',
+    progress: 0,
+    speed: '0 mph',
+    altitude: 'Ground',
+    co2: 0,
+    groundNote: 'Departing in ~2 hrs',
+  },
+  {
+    id: 'karlie',
+    name: 'Karlie Kloss',
+    emoji: '💃',
+    color: '#a78bfa',
+    reg: 'N-KK22',
+    aircraft: 'Cessna Citation X',
+    origin: { lat: 41.8781, lng: -87.6298, name: 'Chicago, IL' },
+    status: 'airborne',
+    progress: 0.45,
+    speed: '604 mph',
+    altitude: '41,000 ft',
+    co2: 11,
+  },
+  {
+    id: 'travis',
+    name: 'Travis Kelce',
+    emoji: '🏈',
+    color: '#fb923c',
+    reg: 'N-TK87',
+    aircraft: 'Gulfstream G550',
+    origin: { lat: 39.0997, lng: -94.5786, name: 'Kansas City, MO' },
+    status: 'airborne',
+    progress: 0.72,
+    speed: '510 mph',
+    altitude: '35,000 ft',
+    co2: 14,
+  },
+  {
+    id: 'haim',
+    name: 'HAIM (all 3)',
+    emoji: '🎸',
+    color: '#34d399',
+    reg: 'N-HAIM',
+    aircraft: 'Embraer Legacy 600',
+    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
+    status: 'airborne',
+    progress: 0.38,
+    speed: '500 mph',
+    altitude: '37,000 ft',
+    co2: 22,
+  },
+  {
+    id: 'lana',
+    name: 'Lana Del Rey',
+    emoji: '🌙',
+    color: '#818cf8',
+    reg: 'N-LDR9',
+    aircraft: 'Hawker 900XP',
+    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
+    status: 'grounded',
+    progress: 0,
+    speed: '0 mph',
+    altitude: 'Ground',
+    co2: 0,
+    groundNote: 'Delayed – weather',
+  },
+  {
+    id: 'cara',
+    name: 'Cara Delevingne',
+    emoji: '🦋',
+    color: '#e879f9',
+    reg: 'N-CDL4',
+    aircraft: 'Gulfstream G200',
+    origin: { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
+    status: 'airborne',
+    progress: 0.55,
+    speed: '530 mph',
+    altitude: '39,000 ft',
+    co2: 51,
+  },
+  {
+    id: 'ed',
+    name: 'Ed Sheeran',
+    emoji: '🎵',
+    color: '#fb7185',
+    reg: 'N-EDS7',
+    aircraft: 'Cessna Citation Sovereign',
+    origin: { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
+    status: 'approaching',
+    progress: 0.91,
+    speed: '460 mph',
+    altitude: '18,000 ft',
+    co2: 48,
+  },
+  {
+    id: 'gigi',
+    name: 'Gigi & Bella Hadid',
+    emoji: '✨',
+    color: '#fde68a',
+    reg: 'N-GBH2',
+    aircraft: 'Dassault Falcon 900',
+    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
+    status: 'airborne',
+    progress: 0.30,
+    speed: '490 mph',
+    altitude: '36,000 ft',
+    co2: 19,
+  },
+  {
+    id: 'sabrina',
+    name: 'Sabrina Carpenter',
+    emoji: '🍒',
+    color: '#f87171',
+    reg: 'N-SC25',
+    aircraft: 'Learjet 75',
+    origin: { lat: 33.749, lng: -84.388, name: 'Atlanta, GA' },
+    status: 'approaching',
+    progress: 0.78,
+    speed: '510 mph',
+    altitude: '28,000 ft',
+    co2: 7,
+  },
+  {
+    id: 'gracie',
+    name: 'Gracie Abrams',
+    emoji: '🌿',
+    color: '#6ee7b7',
+    reg: 'N-GA11',
+    aircraft: 'Pilatus PC-24',
+    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
+    status: 'grounded',
+    progress: 0,
+    speed: '0 mph',
+    altitude: 'Ground',
+    co2: 0,
+    groundNote: 'On time – boarding',
+  },
+];
+
+// ─── MAP INIT ────────────────────────────────────────────────────────────────
+
+const map = L.map('map', {
+  center: [38, -95],
+  zoom: 4,
+  zoomControl: true,
+});
+
+// Dark CartoDB tiles
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// Destination marker (Nashville)
+const destIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    width:18px;height:18px;
+    background:#e879f9;
+    border:3px solid #f0e6ff;
+    border-radius:50%;
+    box-shadow:0 0 16px 4px rgba(232,121,249,0.7);
+    animation: pulse-dest 2s infinite;
+  "></div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
+
+L.marker([DESTINATION.lat, DESTINATION.lng], { icon: destIcon })
+  .addTo(map)
+  .bindPopup(`<div class="popup-content">
+    <div class="popup-name">💍 Wedding Venue</div>
+    <div class="popup-detail">${DESTINATION.name}</div>
+    <div class="popup-detail" style="color:#e879f9;font-weight:700">The Eras Wedding Tour</div>
+  </div>`);
+
+// Add dest pulse animation to page
+const styleEl = document.createElement('style');
+styleEl.textContent = `@keyframes pulse-dest {
+  0%,100%{box-shadow:0 0 16px 4px rgba(232,121,249,0.7);}
+  50%{box-shadow:0 0 30px 10px rgba(232,121,249,0.3);}
+}`;
+document.head.appendChild(styleEl);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+const jetState = {};      // id -> { progress, marker, polyline, card }
+let activeId = null;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function lerp(a, b, t) {
+  return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
+}
+
+function greatCirclePoints(from, to, steps = 60) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // Simple arc – add slight vertical bow
+    const mid = lerp(from, to, t);
+    const bow = Math.sin(Math.PI * t) * 4;
+    pts.push([mid.lat + bow * 0.15, mid.lng]);
+  }
+  return pts;
+}
+
+function bearing(from, to) {
+  const dLng = to.lng - from.lng;
+  const y = Math.sin(dLng) * Math.cos(to.lat * Math.PI / 180);
+  const x = Math.cos(from.lat * Math.PI / 180) * Math.sin(to.lat * Math.PI / 180)
+          - Math.sin(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function formatProgress(p) {
+  return Math.round(p * 100) + '% complete';
+}
+
+function statusClass(s) {
+  return { airborne: 'status-airborne', grounded: 'status-grounded', approaching: 'status-approaching' }[s];
+}
+
+function statusLabel(s) {
+  return { airborne: '✈ Airborne', grounded: '⏳ Grounded', approaching: '🛬 Approaching' }[s];
+}
+
+function planeEmoji(celeb) {
+  if (celeb.status === 'approaching') return '🛬';
+  if (celeb.status === 'grounded') return '🛩️';
+  return '✈️';
+}
+
+// ─── BUILD UI ────────────────────────────────────────────────────────────────
+
+const listEl = document.getElementById('jet-list');
+
+CELEBRITIES.forEach(celeb => {
+  const progress = celeb.progress;
+
+  // Current position
+  const pos = celeb.status === 'grounded'
+    ? celeb.origin
+    : lerp(celeb.origin, DESTINATION, progress);
+
+  // Polyline (only for airborne / approaching)
+  let polyline = null;
+  if (celeb.status !== 'grounded') {
+    const pathPts = greatCirclePoints(celeb.origin, DESTINATION, 80);
+    const flownPts = pathPts.slice(0, Math.round(progress * 80));
+    const remainPts = pathPts.slice(Math.round(progress * 80));
+
+    // Flown path (bright)
+    L.polyline(flownPts, {
+      color: celeb.color,
+      weight: 2,
+      opacity: 0.7,
+      dashArray: null,
+    }).addTo(map);
+
+    // Remaining path (dashed)
+    L.polyline(remainPts, {
+      color: celeb.color,
+      weight: 1.5,
+      opacity: 0.3,
+      dashArray: '6,6',
+    }).addTo(map);
+  }
+
+  // Plane marker
+  const angle = celeb.status === 'grounded' ? 0 : bearing(celeb.origin, DESTINATION);
+  const planeIcon = L.divIcon({
+    className: 'plane-marker',
+    html: `<div class="plane-icon" style="transform:rotate(${angle}deg); color:${celeb.color}; font-size:1.5rem; filter:drop-shadow(0 0 5px ${celeb.color})">✈</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+
+  const marker = L.marker([pos.lat, pos.lng], { icon: planeIcon })
+    .addTo(map)
+    .bindPopup(buildPopup(celeb, pos, progress));
+
+  marker.on('click', () => selectJet(celeb.id));
+
+  // Sidebar card
+  const card = document.createElement('div');
+  card.className = 'jet-card';
+  card.id = `card-${celeb.id}`;
+  card.innerHTML = buildCard(celeb, progress);
+  card.addEventListener('click', () => selectJet(celeb.id));
+  listEl.appendChild(card);
+
+  jetState[celeb.id] = { progress, marker, card, celeb, pos };
+});
+
+function buildPopup(celeb, pos, progress) {
+  return `<div class="popup-content">
+    <div class="popup-name">${celeb.emoji} ${celeb.name}</div>
+    <div class="popup-detail">✈ ${celeb.aircraft}</div>
+    <div class="popup-detail">📡 ${celeb.reg}</div>
+    <div class="popup-detail">📍 ${celeb.status === 'grounded' ? celeb.origin.name : `${pos.lat.toFixed(2)}°N, ${Math.abs(pos.lng).toFixed(2)}°W`}</div>
+    ${celeb.status !== 'grounded' ? `<div class="popup-detail">🎯 ${formatProgress(progress)} to Nashville</div>` : ''}
+    <div class="popup-status ${statusClass(celeb.status)}">${statusLabel(celeb.status)}</div>
+  </div>`;
+}
+
+function buildCard(celeb, progress) {
+  const eta = celeb.status === 'grounded'
+    ? (celeb.groundNote || 'Pending departure')
+    : celeb.status === 'approaching'
+    ? `~${Math.round((1 - progress) * 100)} min`
+    : `~${Math.round((1 - progress) * 220)} min`;
+
+  return `
+    <div class="jet-card-top">
+      <div class="celeb-avatar" style="background:${celeb.color}22; border:1.5px solid ${celeb.color}44">${celeb.emoji}</div>
+      <div>
+        <div class="celeb-name">${celeb.name}</div>
+        <div class="jet-reg">${celeb.reg} · ${celeb.aircraft}</div>
+      </div>
+      <div class="status-badge ${statusClass(celeb.status)}">${statusLabel(celeb.status)}</div>
+    </div>
+    <div class="jet-details">
+      <div class="detail-item">
+        <div class="detail-label">Speed</div>
+        <div class="detail-value">${celeb.speed}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Altitude</div>
+        <div class="detail-value">${celeb.altitude}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">ETA / Status</div>
+        <div class="detail-value">${eta}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Sim CO₂</div>
+        <div class="detail-value" style="color:#f87171">${celeb.co2 > 0 ? celeb.co2 + ' tonnes' : '—'}</div>
+      </div>
+    </div>
+    ${celeb.status !== 'grounded' ? `
+    <div class="route-line">
+      📍 ${celeb.origin.name} <span class="route-arrow">→</span> 💍 Nashville
+      <span style="margin-left:auto;color:#7c3aed">${formatProgress(progress)}</span>
+    </div>` : `
+    <div class="route-line">
+      📍 ${celeb.origin.name} <span class="route-arrow">·</span> <span style="color:#fbbf24">${celeb.groundNote || 'Grounded'}</span>
+    </div>`}
+  `;
+}
+
+// ─── STATS ───────────────────────────────────────────────────────────────────
+
+function updateStats() {
+  const airborne = CELEBRITIES.filter(c => c.status !== 'grounded').length;
+  const totalCo2 = CELEBRITIES.reduce((s, c) => s + c.co2, 0);
+  document.getElementById('stat-airborne').textContent = airborne;
+  document.getElementById('stat-total').textContent = CELEBRITIES.length;
+  document.getElementById('stat-co2').textContent = totalCo2 + 't';
+}
+
+updateStats();
+
+// ─── SELECT JET ──────────────────────────────────────────────────────────────
+
+function selectJet(id) {
+  if (activeId) {
+    document.getElementById(`card-${activeId}`)?.classList.remove('active');
+  }
+  activeId = id;
+  document.getElementById(`card-${id}`)?.classList.add('active');
+  document.getElementById(`card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const state = jetState[id];
+  map.flyTo([state.pos.lat, state.pos.lng], 6, { animate: true, duration: 1 });
+  state.marker.openPopup();
+}
+
+// ─── SIMULATE MOVEMENT ───────────────────────────────────────────────────────
+
+function tick() {
+  CELEBRITIES.forEach(celeb => {
+    if (celeb.status === 'grounded') return;
+
+    // Nudge progress slightly each tick
+    const delta = (Math.random() * 0.002 + 0.001);
+    celeb.progress = Math.min(1, celeb.progress + delta);
+    if (celeb.progress > 0.85 && celeb.status === 'airborne') celeb.status = 'approaching';
+    if (celeb.progress >= 1) { celeb.status = 'grounded'; celeb.groundNote = 'Arrived! 🎉'; celeb.speed = '0 mph'; celeb.altitude = 'Ground'; }
+
+    const state = jetState[celeb.id];
+    state.progress = celeb.progress;
+
+    // Update marker position
+    const newPos = lerp(celeb.origin, DESTINATION, celeb.progress);
+    state.pos = newPos;
+    state.marker.setLatLng([newPos.lat, newPos.lng]);
+    state.marker.setPopupContent(buildPopup(celeb, newPos, celeb.progress));
+
+    // Update card
+    state.card.innerHTML = buildCard(celeb, celeb.progress);
+    state.card.addEventListener('click', () => selectJet(celeb.id));
+    if (activeId === celeb.id) state.card.classList.add('active');
+  });
+
+  updateStats();
+}
+
+setInterval(tick, 3000);
+
+// ─── TICKER ──────────────────────────────────────────────────────────────────
+
+function buildTicker() {
+  const items = [
+    `<span class="ticker-item">✈ <span>Blake Lively & Ryan Reynolds</span> approaching Nashville – ETA 18 min</span>`,
+    `<span class="ticker-item">🛬 <span>Ed Sheeran</span> on final approach into Nashville</span>`,
+    `<span class="ticker-item">✈ <span>Beyoncé & Jay-Z</span> cruising at 38,000ft over Oklahoma</span>`,
+    `<span class="ticker-item">💍 <span>Nashville venue</span> locked with full security perimeter</span>`,
+    `<span class="ticker-item">✈ <span>Cara Delevingne</span> transatlantic – 5h 20min remaining</span>`,
+    `<span class="ticker-item">⏳ <span>Lana Del Rey</span> jet delayed at JFK due to weather hold</span>`,
+    `<span class="ticker-item">✈ <span>HAIM</span> chartered jet cleared LAX airspace</span>`,
+    `<span class="ticker-item">🎉 All data is <span>SIMULATED</span> and fictional – for entertainment only</span>`,
+    `<span class="ticker-item">✈ <span>Travis Kelce</span> en route from Kansas City – runway 36L</span>`,
+    `<span class="ticker-item">🌸 <span>Sabrina Carpenter</span> approaching Nashville – 12 min to touchdown</span>`,
+  ];
+  document.getElementById('ticker-inner').innerHTML = items.join('');
+}
+
+buildTicker();
+
+// ─── TOAST NOTIFICATIONS ─────────────────────────────────────────────────────
+
+const toastQueue = [
+  { title: '🛬 Ed Sheeran', body: 'On final approach into Nashville. ETA 9 min.' },
+  { title: '✈ Beyoncé & Jay-Z', body: 'Passed over Oklahoma City at 38,000 ft.' },
+  { title: '🚨 Alert', body: 'Cara Delevingne crossing the Atlantic – 5h out.' },
+  { title: '⏳ Lana Del Rey', body: 'Still grounded at JFK. Weather hold extended.' },
+  { title: '✈ HAIM', body: 'Cleared LA airspace heading east.' },
+  { title: '🎉 Blake Lively', body: 'Almost there! 18 minutes to Nashville.' },
+];
+
+let toastIdx = 0;
+
+function showToast({ title, body }) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<div class="toast-title">${title}</div><div>${body}</div>`;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 4200);
+}
+
+function nextToast() {
+  showToast(toastQueue[toastIdx % toastQueue.length]);
+  toastIdx++;
+  setTimeout(nextToast, Math.random() * 12000 + 8000);
+}
+
+setTimeout(nextToast, 3000);
+
+// ─── INITIAL ZOOM ────────────────────────────────────────────────────────────
+
+// Show first notification on load
+setTimeout(() => showToast({ title: '💍 Welcome!', body: 'Tracking 12 celebrity jets to Taylor\'s wedding. All data is simulated.' }), 1000);
+</script>
+</body>
+</html>
