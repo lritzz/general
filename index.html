@@ -3,1016 +3,848 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>✈ Taylor's Guest List Tracker</title>
+  <title>NYC Area Flight Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #0a0a0f;
-      color: #f0e6ff;
-      min-height: 100vh;
-    }
-
-    header {
-      background: linear-gradient(135deg, #1a0533 0%, #2d0b5e 50%, #1a0533 100%);
-      border-bottom: 1px solid #6b21a8;
-      padding: 16px 24px;
+      background: #060b14;
+      color: #e2eaf4;
+      height: 100vh;
       display: flex;
-      align-items: center;
-      gap: 16px;
-      position: relative;
+      flex-direction: column;
       overflow: hidden;
     }
 
-    header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 20px,
-        rgba(168,85,247,0.03) 20px,
-        rgba(168,85,247,0.03) 21px
-      );
+    header {
+      background: #0d1b2e;
+      border-bottom: 1px solid #1e3a5f;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
     }
-
-    .header-icon {
-      font-size: 2.5rem;
-      position: relative;
-    }
-
-    .header-text { position: relative; }
 
     h1 {
-      font-size: 1.6rem;
-      font-weight: 800;
-      background: linear-gradient(90deg, #e879f9, #a855f7, #60a5fa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #60a5fa;
     }
 
     .subtitle {
-      font-size: 0.8rem;
-      color: #a78bfa;
-      margin-top: 2px;
+      font-size: 0.75rem;
+      color: #4a7cad;
+      margin-top: 1px;
     }
 
-    .disclaimer {
-      position: relative;
+    .header-controls {
       margin-left: auto;
-      background: rgba(239,68,68,0.15);
-      border: 1px solid rgba(239,68,68,0.4);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 0.72rem;
-      color: #fca5a5;
-      max-width: 260px;
-      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .refresh-btn {
+      background: #1e3a5f;
+      border: 1px solid #2d5a8e;
+      color: #93c5fd;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover { background: #2d5a8e; }
+    .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid #1e3a5f;
+      color: #94a3b8;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .status-dot.live { background: #4ade80; animation: blink 1.5s infinite; }
+    .status-dot.loading { background: #fbbf24; animation: blink 0.7s infinite; }
+    .status-dot.error { background: #f87171; }
+
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
     .layout {
       display: grid;
-      grid-template-columns: 380px 1fr;
-      height: calc(100vh - 76px);
+      grid-template-columns: 360px 1fr;
+      flex: 1;
+      overflow: hidden;
     }
 
     /* SIDEBAR */
     .sidebar {
-      background: #0f0a1e;
-      border-right: 1px solid #2d1b69;
+      background: #080f1a;
+      border-right: 1px solid #1e3a5f;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
-    .sidebar-header {
-      padding: 16px;
-      background: #150d2e;
-      border-bottom: 1px solid #2d1b69;
+    .sidebar-tabs {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      border-bottom: 1px solid #1e3a5f;
     }
 
-    .sidebar-title {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #c084fc;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.72rem;
-      color: #4ade80;
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 0.75rem;
       font-weight: 600;
+      color: #4a7cad;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      animation: pulse-green 1.5s infinite;
-    }
-
-    @keyframes pulse-green {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
+    .tab.active {
+      color: #60a5fa;
+      border-bottom-color: #60a5fa;
+      background: rgba(96,165,250,0.05);
     }
 
     .stats-bar {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 1px;
-      background: #2d1b69;
-      border-bottom: 1px solid #2d1b69;
+      background: #1e3a5f;
+      border-bottom: 1px solid #1e3a5f;
+      flex-shrink: 0;
     }
 
     .stat {
-      background: #0f0a1e;
-      padding: 10px;
+      background: #080f1a;
+      padding: 10px 8px;
       text-align: center;
     }
 
     .stat-value {
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       font-weight: 800;
-      color: #e879f9;
+      color: #60a5fa;
     }
 
     .stat-label {
-      font-size: 0.65rem;
-      color: #7c3aed;
+      font-size: 0.62rem;
+      color: #4a7cad;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
-    .jet-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .jet-list::-webkit-scrollbar { width: 4px; }
-    .jet-list::-webkit-scrollbar-track { background: transparent; }
-    .jet-list::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 2px; }
-
-    .jet-card {
-      background: #150d2e;
-      border: 1px solid #2d1b69;
-      border-radius: 10px;
-      padding: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .jet-card:hover, .jet-card.active {
-      border-color: #7c3aed;
-      background: #1e1040;
-      transform: translateX(2px);
-    }
-
-    .jet-card.active {
-      border-color: #a855f7;
-      box-shadow: 0 0 0 1px #a855f7, 0 4px 20px rgba(168,85,247,0.2);
-    }
-
-    .jet-card-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .celeb-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
+    .search-box {
+      padding: 10px;
+      border-bottom: 1px solid #1e3a5f;
       flex-shrink: 0;
     }
 
-    .celeb-name {
-      font-weight: 700;
-      font-size: 0.9rem;
-      color: #f0e6ff;
-    }
-
-    .jet-reg {
-      font-size: 0.72rem;
-      color: #7c3aed;
-      font-family: monospace;
-      margin-top: 1px;
-    }
-
-    .status-badge {
-      margin-left: auto;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .status-airborne {
-      background: rgba(74,222,128,0.15);
-      color: #4ade80;
-      border: 1px solid rgba(74,222,128,0.3);
-    }
-
-    .status-grounded {
-      background: rgba(251,191,36,0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(251,191,36,0.3);
-    }
-
-    .status-approaching {
-      background: rgba(96,165,250,0.15);
-      color: #60a5fa;
-      border: 1px solid rgba(96,165,250,0.3);
-    }
-
-    .jet-details {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    .detail-item {
-      background: rgba(0,0,0,0.3);
-      border-radius: 6px;
-      padding: 6px 8px;
-    }
-
-    .detail-label {
-      font-size: 0.62rem;
-      color: #6d28d9;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .detail-value {
-      font-size: 0.82rem;
-      color: #e2d9f3;
-      margin-top: 1px;
-      font-weight: 600;
-    }
-
-    .route-line {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #2d1b69;
-      font-size: 0.75rem;
-      color: #a78bfa;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .route-arrow { color: #7c3aed; }
-
-    /* MAP */
-    #map {
+    .search-box input {
       width: 100%;
-      height: 100%;
-      background: #0a0a0f;
+      background: #0d1b2e;
+      border: 1px solid #1e3a5f;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #e2eaf4;
+      font-size: 0.8rem;
+      outline: none;
     }
 
-    /* Leaflet dark overrides */
-    .leaflet-container {
-      background: #060410 !important;
-    }
+    .search-box input:focus { border-color: #2d5a8e; }
+    .search-box input::placeholder { color: #4a7cad; }
 
-    /* Custom popup */
-    .leaflet-popup-content-wrapper {
-      background: #1a0d35;
-      border: 1px solid #7c3aed;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(124,58,237,0.3);
-      color: #f0e6ff;
-    }
-
-    .leaflet-popup-tip { background: #1a0d35; }
-
-    .popup-content { padding: 4px; min-width: 200px; }
-    .popup-name { font-weight: 800; font-size: 1rem; margin-bottom: 4px; }
-    .popup-detail { font-size: 0.8rem; color: #c084fc; margin: 2px 0; }
-    .popup-status { font-size: 0.75rem; margin-top: 6px; padding: 4px 8px; border-radius: 20px; display: inline-block; }
-
-    /* Plane marker */
-    .plane-marker {
-      background: none;
-      border: none;
-    }
-
-    .plane-icon {
-      font-size: 1.4rem;
-      filter: drop-shadow(0 0 6px rgba(168,85,247,0.8));
-      transition: transform 0.3s;
-    }
-
-    .destination-marker {
-      width: 14px;
-      height: 14px;
-      background: #e879f9;
-      border: 2px solid #f0e6ff;
-      border-radius: 50%;
-      box-shadow: 0 0 10px rgba(232,121,249,0.6);
-    }
-
-    /* Update ticker */
-    .ticker {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #150d2e;
-      border-top: 1px solid #2d1b69;
-      padding: 8px 16px;
-      font-size: 0.75rem;
-      color: #a78bfa;
-      overflow: hidden;
-      height: 34px;
-      z-index: 1000;
-    }
-
-    .ticker-inner {
-      white-space: nowrap;
-      animation: ticker-scroll 60s linear infinite;
-      display: inline-block;
-    }
-
-    @keyframes ticker-scroll {
-      0% { transform: translateX(100vw); }
-      100% { transform: translateX(-100%); }
-    }
-
-    .ticker-item { margin-right: 80px; }
-    .ticker-item span { color: #e879f9; font-weight: 600; }
-
-    /* Toast */
-    .toast-container {
-      position: fixed;
-      top: 90px;
-      right: 16px;
-      z-index: 9999;
+    .flight-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
 
-    .toast {
-      background: #1a0d35;
-      border: 1px solid #7c3aed;
-      border-radius: 10px;
-      padding: 12px 16px;
-      max-width: 300px;
-      font-size: 0.8rem;
-      color: #f0e6ff;
-      box-shadow: 0 4px 20px rgba(124,58,237,0.3);
-      animation: toast-in 0.3s ease, toast-out 0.3s ease 3.7s forwards;
+    .flight-list::-webkit-scrollbar { width: 4px; }
+    .flight-list::-webkit-scrollbar-track { background: transparent; }
+    .flight-list::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+    .flight-card {
+      background: #0d1b2e;
+      border: 1px solid #1a3050;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: start;
     }
 
-    .toast-title { font-weight: 700; color: #e879f9; margin-bottom: 3px; }
+    .flight-card:hover { border-color: #2d5a8e; background: #112035; }
+    .flight-card.active { border-color: #60a5fa; background: #0f2040; box-shadow: 0 0 0 1px #60a5fa33; }
 
-    @keyframes toast-in {
-      from { opacity: 0; transform: translateX(20px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-
-    @keyframes toast-out {
-      from { opacity: 1; transform: translateX(0); }
-      to { opacity: 0; transform: translateX(20px); }
-    }
-
-    /* Legend */
-    .map-legend {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 1000;
-      background: rgba(15,10,30,0.92);
-      border: 1px solid #2d1b69;
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 0.75rem;
-      color: #a78bfa;
-      backdrop-filter: blur(8px);
-    }
-
-    .legend-title {
+    .flight-callsign {
       font-weight: 700;
-      color: #c084fc;
-      margin-bottom: 8px;
-      text-transform: uppercase;
+      font-size: 0.95rem;
+      color: #93c5fd;
+      font-family: monospace;
+    }
+
+    .flight-info {
+      font-size: 0.72rem;
+      color: #4a7cad;
+      margin-top: 2px;
+      line-height: 1.6;
+    }
+
+    .flight-info span { color: #7ca5cc; }
+
+    .flight-meta {
+      text-align: right;
+    }
+
+    .altitude-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #0a2040;
+      color: #60a5fa;
+      border: 1px solid #1e3a5f;
+      font-family: monospace;
+      white-space: nowrap;
+    }
+
+    .speed-text {
       font-size: 0.68rem;
-      letter-spacing: 0.1em;
+      color: #4a7cad;
+      margin-top: 4px;
+      text-align: right;
     }
 
-    .legend-item {
+    .empty-state {
+      flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      color: #2d5a8e;
       gap: 8px;
-      margin: 4px 0;
+      font-size: 0.85rem;
+      padding: 40px;
+      text-align: center;
     }
 
-    .legend-dot {
-      width: 10px;
-      height: 10px;
+    .empty-icon { font-size: 2.5rem; }
+
+    /* TFR panel */
+    .tfr-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tfr-card {
+      background: #0d1b2e;
+      border: 1px solid #1a3050;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .tfr-card.active-tfr { border-color: #f87171; background: #1a0d0d; }
+    .tfr-card.potential-tfr { border-color: #fbbf24; background: #1a150d; }
+
+    .tfr-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; }
+    .tfr-detail { font-size: 0.75rem; color: #7ca5cc; line-height: 1.6; }
+    .tfr-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .badge-red { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+    .badge-yellow { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .badge-blue { background: rgba(96,165,250,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+
+    /* MAP */
+    #map { width: 100%; height: 100%; }
+
+    .leaflet-container { background: #060b14 !important; }
+
+    .leaflet-popup-content-wrapper {
+      background: #0d1b2e;
+      border: 1px solid #2d5a8e;
+      border-radius: 10px;
+      color: #e2eaf4;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .leaflet-popup-tip { background: #0d1b2e; }
+
+    .popup-callsign { font-weight: 800; font-size: 1rem; font-family: monospace; color: #93c5fd; }
+    .popup-row { font-size: 0.78rem; color: #7ca5cc; margin: 3px 0; }
+    .popup-row strong { color: #b0cce8; }
+
+    /* Plane icons */
+    .plane-marker { background: none; border: none; }
+
+    /* Attribution override */
+    .leaflet-control-attribution { background: rgba(6,11,20,0.8) !important; color: #4a7cad !important; }
+    .leaflet-control-attribution a { color: #2d5a8e !important; }
+
+    /* Loading overlay */
+    #loading-overlay {
+      position: fixed; inset: 0; background: rgba(6,11,20,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; flex-direction: column; gap: 12px;
+    }
+
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #1e3a5f;
+      border-top-color: #60a5fa;
       border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { color: #4a7cad; font-size: 0.85rem; }
+
+    .error-banner {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      color: #fca5a5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      margin: 8px;
+      display: none;
+    }
+
+    .last-updated {
+      font-size: 0.7rem;
+      color: #4a7cad;
     }
 
     @media (max-width: 768px) {
-      .layout { grid-template-columns: 1fr; grid-template-rows: 50vh 50vh; }
-      header { padding: 12px; }
-      h1 { font-size: 1.1rem; }
-      .disclaimer { display: none; }
-      .map-legend { display: none; }
+      .layout { grid-template-columns: 1fr; grid-template-rows: 45vh 55vh; }
+      .sidebar { border-right: none; border-bottom: 1px solid #1e3a5f; }
     }
   </style>
 </head>
 <body>
 
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Fetching live NYC airspace data…</div>
+</div>
+
 <header>
-  <div class="header-icon">💍✈</div>
-  <div class="header-text">
-    <h1>Taylor's Wedding Guest Jet Tracker</h1>
-    <div class="subtitle">Simulated flight tracking · Entertainment purposes only · Not real data</div>
+  <div>
+    <h1>✈ NYC Airspace Tracker</h1>
+    <div class="subtitle">Live ADS-B · OpenSky Network · ~40 NM radius around KJFK/KEWR/KLGA/KTEB</div>
   </div>
-  <div class="disclaimer">
-    ⚠️ <strong>Fictional / Simulated</strong> — All flight data, positions, and routes are randomly generated for entertainment. No real aircraft data is used.
+  <div class="header-controls">
+    <div class="status-pill" id="status-pill">
+      <div class="status-dot loading" id="status-dot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+    <span class="last-updated" id="last-updated"></span>
+    <button class="refresh-btn" id="refresh-btn" onclick="fetchFlights()">⟳ Refresh</button>
   </div>
 </header>
 
 <div class="layout">
   <div class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">Celebrity Jets</div>
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        SIMULATED LIVE
-      </div>
+    <div class="sidebar-tabs">
+      <div class="tab active" id="tab-flights" onclick="switchTab('flights')">Flights</div>
+      <div class="tab" id="tab-tfr" onclick="switchTab('tfr')">TFRs & Events</div>
     </div>
 
     <div class="stats-bar">
       <div class="stat">
-        <div class="stat-value" id="stat-airborne">0</div>
-        <div class="stat-label">Airborne</div>
+        <div class="stat-value" id="stat-count">—</div>
+        <div class="stat-label">Aircraft</div>
       </div>
       <div class="stat">
-        <div class="stat-value" id="stat-total">0</div>
-        <div class="stat-label">Jets Total</div>
+        <div class="stat-value" id="stat-arriving">—</div>
+        <div class="stat-label">Arrivals</div>
       </div>
       <div class="stat">
-        <div class="stat-value" id="stat-co2">0t</div>
-        <div class="stat-label">Sim CO₂</div>
+        <div class="stat-value" id="stat-high">—</div>
+        <div class="stat-label">High-alt</div>
       </div>
     </div>
 
-    <div class="jet-list" id="jet-list"></div>
-  </div>
+    <div id="error-banner" class="error-banner"></div>
 
-  <div style="position: relative;">
-    <div id="map"></div>
-    <div class="map-legend">
-      <div class="legend-title">Legend</div>
-      <div class="legend-item"><span style="font-size:1rem">✈</span> Airborne</div>
-      <div class="legend-item"><span style="font-size:1rem">🛬</span> Approaching</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#e879f9"></div> Destination (Nashville)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Current position</div>
+    <!-- Flights tab -->
+    <div id="panel-flights" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search callsign, aircraft type…" oninput="filterFlights()" />
+      </div>
+      <div class="flight-list" id="flight-list"></div>
+    </div>
+
+    <!-- TFR / Events tab -->
+    <div id="panel-tfr" style="display:none;flex:1;overflow:hidden;">
+      <div class="tfr-panel" id="tfr-panel"></div>
     </div>
   </div>
-</div>
 
-<div class="ticker">
-  <div class="ticker-inner" id="ticker-inner"></div>
+  <div id="map"></div>
 </div>
-
-<div class="toast-container" id="toast-container"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ─── DATA ────────────────────────────────────────────────────────────────────
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
 
-const DESTINATION = { lat: 36.1627, lng: -86.7816, name: 'Nashville, TN' }; // Fictional wedding location
+// NYC bounding box (~40 NM radius around KJFK)
+const BOUNDS = {
+  lamin: 40.35,
+  lomin: -74.80,
+  lamax: 41.30,
+  lomax: -73.40,
+};
 
-const CELEBRITIES = [
-  {
-    id: 'beyonce',
-    name: 'Beyoncé & Jay-Z',
-    emoji: '👑',
-    color: '#fbbf24',
-    reg: 'N-QH4B',
-    aircraft: 'Boeing 767 (Luxury)',
-    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
-    status: 'airborne',
-    progress: 0.62,
-    speed: '520 mph',
-    altitude: '38,000 ft',
-    co2: 42,
-  },
-  {
-    id: 'blake',
-    name: 'Blake Lively & Ryan Reynolds',
-    emoji: '🎬',
-    color: '#60a5fa',
-    reg: 'N-BL7R',
-    aircraft: 'Gulfstream G650',
-    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
-    status: 'approaching',
-    progress: 0.88,
-    speed: '480 mph',
-    altitude: '22,000 ft',
-    co2: 18,
-  },
-  {
-    id: 'selena',
-    name: 'Selena Gomez',
-    emoji: '🌸',
-    color: '#f9a8d4',
-    reg: 'N-SG13',
-    aircraft: 'Bombardier Global 6000',
-    origin: { lat: 32.7767, lng: -96.797, name: 'Dallas, TX' },
-    status: 'grounded',
-    progress: 0,
-    speed: '0 mph',
-    altitude: 'Ground',
-    co2: 0,
-    groundNote: 'Departing in ~2 hrs',
-  },
-  {
-    id: 'karlie',
-    name: 'Karlie Kloss',
-    emoji: '💃',
-    color: '#a78bfa',
-    reg: 'N-KK22',
-    aircraft: 'Cessna Citation X',
-    origin: { lat: 41.8781, lng: -87.6298, name: 'Chicago, IL' },
-    status: 'airborne',
-    progress: 0.45,
-    speed: '604 mph',
-    altitude: '41,000 ft',
-    co2: 11,
-  },
-  {
-    id: 'travis',
-    name: 'Travis Kelce',
-    emoji: '🏈',
-    color: '#fb923c',
-    reg: 'N-TK87',
-    aircraft: 'Gulfstream G550',
-    origin: { lat: 39.0997, lng: -94.5786, name: 'Kansas City, MO' },
-    status: 'airborne',
-    progress: 0.72,
-    speed: '510 mph',
-    altitude: '35,000 ft',
-    co2: 14,
-  },
-  {
-    id: 'haim',
-    name: 'HAIM (all 3)',
-    emoji: '🎸',
-    color: '#34d399',
-    reg: 'N-HAIM',
-    aircraft: 'Embraer Legacy 600',
-    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
-    status: 'airborne',
-    progress: 0.38,
-    speed: '500 mph',
-    altitude: '37,000 ft',
-    co2: 22,
-  },
-  {
-    id: 'lana',
-    name: 'Lana Del Rey',
-    emoji: '🌙',
-    color: '#818cf8',
-    reg: 'N-LDR9',
-    aircraft: 'Hawker 900XP',
-    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
-    status: 'grounded',
-    progress: 0,
-    speed: '0 mph',
-    altitude: 'Ground',
-    co2: 0,
-    groundNote: 'Delayed – weather',
-  },
-  {
-    id: 'cara',
-    name: 'Cara Delevingne',
-    emoji: '🦋',
-    color: '#e879f9',
-    reg: 'N-CDL4',
-    aircraft: 'Gulfstream G200',
-    origin: { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
-    status: 'airborne',
-    progress: 0.55,
-    speed: '530 mph',
-    altitude: '39,000 ft',
-    co2: 51,
-  },
-  {
-    id: 'ed',
-    name: 'Ed Sheeran',
-    emoji: '🎵',
-    color: '#fb7185',
-    reg: 'N-EDS7',
-    aircraft: 'Cessna Citation Sovereign',
-    origin: { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
-    status: 'approaching',
-    progress: 0.91,
-    speed: '460 mph',
-    altitude: '18,000 ft',
-    co2: 48,
-  },
-  {
-    id: 'gigi',
-    name: 'Gigi & Bella Hadid',
-    emoji: '✨',
-    color: '#fde68a',
-    reg: 'N-GBH2',
-    aircraft: 'Dassault Falcon 900',
-    origin: { lat: 40.7128, lng: -74.006, name: 'New York, NY' },
-    status: 'airborne',
-    progress: 0.30,
-    speed: '490 mph',
-    altitude: '36,000 ft',
-    co2: 19,
-  },
-  {
-    id: 'sabrina',
-    name: 'Sabrina Carpenter',
-    emoji: '🍒',
-    color: '#f87171',
-    reg: 'N-SC25',
-    aircraft: 'Learjet 75',
-    origin: { lat: 33.749, lng: -84.388, name: 'Atlanta, GA' },
-    status: 'approaching',
-    progress: 0.78,
-    speed: '510 mph',
-    altitude: '28,000 ft',
-    co2: 7,
-  },
-  {
-    id: 'gracie',
-    name: 'Gracie Abrams',
-    emoji: '🌿',
-    color: '#6ee7b7',
-    reg: 'N-GA11',
-    aircraft: 'Pilatus PC-24',
-    origin: { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, CA' },
-    status: 'grounded',
-    progress: 0,
-    speed: '0 mph',
-    altitude: 'Ground',
-    co2: 0,
-    groundNote: 'On time – boarding',
-  },
+const NYC_CENTER = [40.7128, -74.006];
+
+// Key airports
+const AIRPORTS = [
+  { name: 'JFK', lat: 40.6413, lng: -73.7781, iata: 'KJFK' },
+  { name: 'EWR', lat: 40.6895, lng: -74.1745, iata: 'KEWR' },
+  { name: 'LGA', lat: 40.7769, lng: -73.8740, iata: 'KLGA' },
+  { name: 'TEB', lat: 40.8501, lng: -74.0608, iata: 'KTEB' },
+  { name: 'HPN', lat: 41.0670, lng: -73.7076, iata: 'KHPN' },
+  { name: 'CDW', lat: 40.8752, lng: -74.2814, iata: 'KCDW' },
 ];
 
-// ─── MAP INIT ────────────────────────────────────────────────────────────────
+// MSG area (Madison Square Garden)
+const MSG = { lat: 40.7505, lng: -73.9934, name: 'Madison Square Garden' };
+
+// ─── MAP ─────────────────────────────────────────────────────────────────────
 
 const map = L.map('map', {
-  center: [38, -95],
-  zoom: 4,
+  center: NYC_CENTER,
+  zoom: 10,
   zoomControl: true,
 });
 
-// Dark CartoDB tiles
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
   subdomains: 'abcd',
   maxZoom: 19,
 }).addTo(map);
 
-// Destination marker (Nashville)
-const destIcon = L.divIcon({
-  className: '',
-  html: `<div style="
-    width:18px;height:18px;
-    background:#e879f9;
-    border:3px solid #f0e6ff;
-    border-radius:50%;
-    box-shadow:0 0 16px 4px rgba(232,121,249,0.7);
-    animation: pulse-dest 2s infinite;
-  "></div>`,
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
+// Airport markers
+AIRPORTS.forEach(ap => {
+  L.circleMarker([ap.lat, ap.lng], {
+    radius: 6,
+    color: '#2d5a8e',
+    fillColor: '#0d1b2e',
+    fillOpacity: 1,
+    weight: 2,
+  }).addTo(map)
+    .bindTooltip(ap.name, { permanent: true, className: 'airport-label', direction: 'top', offset: [0, -8] });
 });
 
-L.marker([DESTINATION.lat, DESTINATION.lng], { icon: destIcon })
-  .addTo(map)
-  .bindPopup(`<div class="popup-content">
-    <div class="popup-name">💍 Wedding Venue</div>
-    <div class="popup-detail">${DESTINATION.name}</div>
-    <div class="popup-detail" style="color:#e879f9;font-weight:700">The Eras Wedding Tour</div>
+// MSG marker
+L.circleMarker([MSG.lat, MSG.lng], {
+  radius: 10,
+  color: '#fbbf24',
+  fillColor: '#fbbf2433',
+  fillOpacity: 0.5,
+  weight: 2,
+  dashArray: '4,4',
+}).addTo(map)
+  .bindPopup(`<div>
+    <div style="font-weight:700;color:#fbbf24">🏟 ${MSG.name}</div>
+    <div style="font-size:0.78rem;color:#7ca5cc;margin-top:4px">Rumored event venue this weekend.<br>Watch for potential TFR activity.</div>
   </div>`);
 
-// Add dest pulse animation to page
-const styleEl = document.createElement('style');
-styleEl.textContent = `@keyframes pulse-dest {
-  0%,100%{box-shadow:0 0 16px 4px rgba(232,121,249,0.7);}
-  50%{box-shadow:0 0 30px 10px rgba(232,121,249,0.3);}
-}`;
-document.head.appendChild(styleEl);
+// Custom airport label style
+const labelStyle = document.createElement('style');
+labelStyle.textContent = `
+  .airport-label {
+    background: rgba(13,27,46,0.85) !important;
+    border: 1px solid #1e3a5f !important;
+    border-radius: 4px !important;
+    color: #60a5fa !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    padding: 2px 5px !important;
+    box-shadow: none !important;
+  }
+  .airport-label::before { display: none; }
+`;
+document.head.appendChild(labelStyle);
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 
-const jetState = {};      // id -> { progress, marker, polyline, card }
-let activeId = null;
+let allFlights = [];
+let markers = {};
+let activeIcao = null;
+let currentTab = 'flights';
+let searchTerm = '';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── FETCH ───────────────────────────────────────────────────────────────────
 
-function lerp(a, b, t) {
-  return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
-}
+async function fetchFlights() {
+  setStatus('loading', 'Fetching…');
+  document.getElementById('refresh-btn').disabled = true;
 
-function greatCirclePoints(from, to, steps = 60) {
-  const pts = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    // Simple arc – add slight vertical bow
-    const mid = lerp(from, to, t);
-    const bow = Math.sin(Math.PI * t) * 4;
-    pts.push([mid.lat + bow * 0.15, mid.lng]);
+  const url = `https://opensky-network.org/api/states/all?lamin=${BOUNDS.lamin}&lomin=${BOUNDS.lomin}&lamax=${BOUNDS.lamax}&lomax=${BOUNDS.lomax}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById('loading-overlay').style.display = 'none';
+    processFlights(data.states || []);
+    setStatus('live', `Live · ${data.states?.length ?? 0} aircraft`);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    hideError();
+  } catch (err) {
+    document.getElementById('loading-overlay').style.display = 'none';
+    setStatus('error', 'Error – retrying…');
+    showError(`Could not reach OpenSky Network: ${err.message}. The API has rate limits for anonymous users (1 req/10s). Will retry in 15s.`);
+    console.error(err);
+    setTimeout(fetchFlights, 15000);
+  } finally {
+    document.getElementById('refresh-btn').disabled = false;
   }
-  return pts;
 }
 
-function bearing(from, to) {
-  const dLng = to.lng - from.lng;
-  const y = Math.sin(dLng) * Math.cos(to.lat * Math.PI / 180);
-  const x = Math.cos(from.lat * Math.PI / 180) * Math.sin(to.lat * Math.PI / 180)
-          - Math.sin(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.cos(dLng);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
+// OpenSky state vector indices:
+// 0=icao24, 1=callsign, 2=origin_country, 3=time_position, 4=last_contact,
+// 5=longitude, 6=latitude, 7=baro_altitude(m), 8=on_ground, 9=velocity(m/s),
+// 10=true_track(deg), 11=vertical_rate(m/s), 12=sensors, 13=geo_altitude(m),
+// 14=squawk, 15=spi, 16=position_source
 
-function formatProgress(p) {
-  return Math.round(p * 100) + '% complete';
-}
+function processFlights(states) {
+  allFlights = states
+    .filter(s => s[5] != null && s[6] != null) // must have position
+    .map(s => ({
+      icao24: s[0],
+      callsign: (s[1] || '').trim() || s[0].toUpperCase(),
+      country: s[2] || '—',
+      lon: s[5],
+      lat: s[6],
+      alt_m: s[7],
+      alt_ft: s[7] != null ? Math.round(s[7] * 3.281) : null,
+      on_ground: s[8],
+      speed_ms: s[9],
+      speed_kts: s[9] != null ? Math.round(s[9] * 1.944) : null,
+      heading: s[10] || 0,
+      vrate: s[11],
+      squawk: s[14] || '—',
+    }));
 
-function statusClass(s) {
-  return { airborne: 'status-airborne', grounded: 'status-grounded', approaching: 'status-approaching' }[s];
-}
-
-function statusLabel(s) {
-  return { airborne: '✈ Airborne', grounded: '⏳ Grounded', approaching: '🛬 Approaching' }[s];
-}
-
-function planeEmoji(celeb) {
-  if (celeb.status === 'approaching') return '🛬';
-  if (celeb.status === 'grounded') return '🛩️';
-  return '✈️';
-}
-
-// ─── BUILD UI ────────────────────────────────────────────────────────────────
-
-const listEl = document.getElementById('jet-list');
-
-CELEBRITIES.forEach(celeb => {
-  const progress = celeb.progress;
-
-  // Current position
-  const pos = celeb.status === 'grounded'
-    ? celeb.origin
-    : lerp(celeb.origin, DESTINATION, progress);
-
-  // Polyline (only for airborne / approaching)
-  let polyline = null;
-  if (celeb.status !== 'grounded') {
-    const pathPts = greatCirclePoints(celeb.origin, DESTINATION, 80);
-    const flownPts = pathPts.slice(0, Math.round(progress * 80));
-    const remainPts = pathPts.slice(Math.round(progress * 80));
-
-    // Flown path (bright)
-    L.polyline(flownPts, {
-      color: celeb.color,
-      weight: 2,
-      opacity: 0.7,
-      dashArray: null,
-    }).addTo(map);
-
-    // Remaining path (dashed)
-    L.polyline(remainPts, {
-      color: celeb.color,
-      weight: 1.5,
-      opacity: 0.3,
-      dashArray: '6,6',
-    }).addTo(map);
-  }
-
-  // Plane marker
-  const angle = celeb.status === 'grounded' ? 0 : bearing(celeb.origin, DESTINATION);
-  const planeIcon = L.divIcon({
-    className: 'plane-marker',
-    html: `<div class="plane-icon" style="transform:rotate(${angle}deg); color:${celeb.color}; font-size:1.5rem; filter:drop-shadow(0 0 5px ${celeb.color})">✈</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
-
-  const marker = L.marker([pos.lat, pos.lng], { icon: planeIcon })
-    .addTo(map)
-    .bindPopup(buildPopup(celeb, pos, progress));
-
-  marker.on('click', () => selectJet(celeb.id));
-
-  // Sidebar card
-  const card = document.createElement('div');
-  card.className = 'jet-card';
-  card.id = `card-${celeb.id}`;
-  card.innerHTML = buildCard(celeb, progress);
-  card.addEventListener('click', () => selectJet(celeb.id));
-  listEl.appendChild(card);
-
-  jetState[celeb.id] = { progress, marker, card, celeb, pos };
-});
-
-function buildPopup(celeb, pos, progress) {
-  return `<div class="popup-content">
-    <div class="popup-name">${celeb.emoji} ${celeb.name}</div>
-    <div class="popup-detail">✈ ${celeb.aircraft}</div>
-    <div class="popup-detail">📡 ${celeb.reg}</div>
-    <div class="popup-detail">📍 ${celeb.status === 'grounded' ? celeb.origin.name : `${pos.lat.toFixed(2)}°N, ${Math.abs(pos.lng).toFixed(2)}°W`}</div>
-    ${celeb.status !== 'grounded' ? `<div class="popup-detail">🎯 ${formatProgress(progress)} to Nashville</div>` : ''}
-    <div class="popup-status ${statusClass(celeb.status)}">${statusLabel(celeb.status)}</div>
-  </div>`;
-}
-
-function buildCard(celeb, progress) {
-  const eta = celeb.status === 'grounded'
-    ? (celeb.groundNote || 'Pending departure')
-    : celeb.status === 'approaching'
-    ? `~${Math.round((1 - progress) * 100)} min`
-    : `~${Math.round((1 - progress) * 220)} min`;
-
-  return `
-    <div class="jet-card-top">
-      <div class="celeb-avatar" style="background:${celeb.color}22; border:1.5px solid ${celeb.color}44">${celeb.emoji}</div>
-      <div>
-        <div class="celeb-name">${celeb.name}</div>
-        <div class="jet-reg">${celeb.reg} · ${celeb.aircraft}</div>
-      </div>
-      <div class="status-badge ${statusClass(celeb.status)}">${statusLabel(celeb.status)}</div>
-    </div>
-    <div class="jet-details">
-      <div class="detail-item">
-        <div class="detail-label">Speed</div>
-        <div class="detail-value">${celeb.speed}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Altitude</div>
-        <div class="detail-value">${celeb.altitude}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">ETA / Status</div>
-        <div class="detail-value">${eta}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Sim CO₂</div>
-        <div class="detail-value" style="color:#f87171">${celeb.co2 > 0 ? celeb.co2 + ' tonnes' : '—'}</div>
-      </div>
-    </div>
-    ${celeb.status !== 'grounded' ? `
-    <div class="route-line">
-      📍 ${celeb.origin.name} <span class="route-arrow">→</span> 💍 Nashville
-      <span style="margin-left:auto;color:#7c3aed">${formatProgress(progress)}</span>
-    </div>` : `
-    <div class="route-line">
-      📍 ${celeb.origin.name} <span class="route-arrow">·</span> <span style="color:#fbbf24">${celeb.groundNote || 'Grounded'}</span>
-    </div>`}
-  `;
+  renderList();
+  updateMarkers();
+  updateStats();
 }
 
 // ─── STATS ───────────────────────────────────────────────────────────────────
 
 function updateStats() {
-  const airborne = CELEBRITIES.filter(c => c.status !== 'grounded').length;
-  const totalCo2 = CELEBRITIES.reduce((s, c) => s + c.co2, 0);
-  document.getElementById('stat-airborne').textContent = airborne;
-  document.getElementById('stat-total').textContent = CELEBRITIES.length;
-  document.getElementById('stat-co2').textContent = totalCo2 + 't';
+  const airborne = allFlights.filter(f => !f.on_ground);
+  const arriving = airborne.filter(f => f.vrate != null && f.vrate < -2);
+  const high = airborne.filter(f => f.alt_ft != null && f.alt_ft > 18000);
+  document.getElementById('stat-count').textContent = airborne.length;
+  document.getElementById('stat-arriving').textContent = arriving.length;
+  document.getElementById('stat-high').textContent = high.length;
 }
 
-updateStats();
+// ─── LIST ────────────────────────────────────────────────────────────────────
 
-// ─── SELECT JET ──────────────────────────────────────────────────────────────
+function filterFlights() {
+  searchTerm = document.getElementById('search-input').value.toLowerCase();
+  renderList();
+}
 
-function selectJet(id) {
-  if (activeId) {
-    document.getElementById(`card-${activeId}`)?.classList.remove('active');
+function renderList() {
+  const list = document.getElementById('flight-list');
+  let flights = allFlights.filter(f => !f.on_ground);
+
+  if (searchTerm) {
+    flights = flights.filter(f =>
+      f.callsign.toLowerCase().includes(searchTerm) ||
+      f.icao24.toLowerCase().includes(searchTerm) ||
+      f.country.toLowerCase().includes(searchTerm) ||
+      (f.squawk && f.squawk.includes(searchTerm))
+    );
   }
-  activeId = id;
-  document.getElementById(`card-${id}`)?.classList.add('active');
-  document.getElementById(`card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  const state = jetState[id];
-  map.flyTo([state.pos.lat, state.pos.lng], 6, { animate: true, duration: 1 });
-  state.marker.openPopup();
+  // Sort by altitude descending
+  flights.sort((a, b) => (b.alt_ft || 0) - (a.alt_ft || 0));
+
+  if (flights.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">✈</div>
+      <div>${searchTerm ? 'No flights match your search.' : 'No airborne flights found in range.'}</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = flights.map(f => {
+    const vIcon = f.vrate == null ? '→' : f.vrate > 2 ? '↑' : f.vrate < -2 ? '↓' : '→';
+    const vColor = f.vrate == null ? '#4a7cad' : f.vrate > 2 ? '#4ade80' : f.vrate < -2 ? '#f87171' : '#94a3b8';
+    const altText = f.alt_ft != null ? `${f.alt_ft.toLocaleString()} ft` : '—';
+    const spdText = f.speed_kts != null ? `${f.speed_kts} kts` : '—';
+
+    return `<div class="flight-card${activeIcao === f.icao24 ? ' active' : ''}" onclick="selectFlight('${f.icao24}')">
+      <div>
+        <div class="flight-callsign">${f.callsign}</div>
+        <div class="flight-info">
+          <span>${f.icao24.toUpperCase()}</span> · ${f.country}<br>
+          Squawk <span>${f.squawk}</span> · Hdg <span>${Math.round(f.heading)}°</span>
+        </div>
+      </div>
+      <div class="flight-meta">
+        <div class="altitude-badge">${altText}</div>
+        <div class="speed-text">${spdText} <span style="color:${vColor}">${vIcon}</span></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-// ─── SIMULATE MOVEMENT ───────────────────────────────────────────────────────
+// ─── MARKERS ─────────────────────────────────────────────────────────────────
 
-function tick() {
-  CELEBRITIES.forEach(celeb => {
-    if (celeb.status === 'grounded') return;
+function planeColor(f) {
+  if (f.alt_ft == null) return '#4a7cad';
+  if (f.alt_ft > 30000) return '#60a5fa';
+  if (f.alt_ft > 18000) return '#93c5fd';
+  if (f.alt_ft > 5000) return '#34d399';
+  return '#fbbf24'; // low altitude / approach
+}
 
-    // Nudge progress slightly each tick
-    const delta = (Math.random() * 0.002 + 0.001);
-    celeb.progress = Math.min(1, celeb.progress + delta);
-    if (celeb.progress > 0.85 && celeb.status === 'airborne') celeb.status = 'approaching';
-    if (celeb.progress >= 1) { celeb.status = 'grounded'; celeb.groundNote = 'Arrived! 🎉'; celeb.speed = '0 mph'; celeb.altitude = 'Ground'; }
-
-    const state = jetState[celeb.id];
-    state.progress = celeb.progress;
-
-    // Update marker position
-    const newPos = lerp(celeb.origin, DESTINATION, celeb.progress);
-    state.pos = newPos;
-    state.marker.setLatLng([newPos.lat, newPos.lng]);
-    state.marker.setPopupContent(buildPopup(celeb, newPos, celeb.progress));
-
-    // Update card
-    state.card.innerHTML = buildCard(celeb, celeb.progress);
-    state.card.addEventListener('click', () => selectJet(celeb.id));
-    if (activeId === celeb.id) state.card.classList.add('active');
+function makePlaneIcon(f) {
+  const color = planeColor(f);
+  const angle = f.heading || 0;
+  return L.divIcon({
+    className: 'plane-marker',
+    html: `<div style="
+      transform: rotate(${angle}deg);
+      font-size: 1rem;
+      color: ${color};
+      filter: drop-shadow(0 0 3px ${color}88);
+      line-height: 1;
+    ">✈</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
-
-  updateStats();
 }
 
-setInterval(tick, 3000);
+function updateMarkers() {
+  const currentIcaos = new Set(allFlights.filter(f => !f.on_ground).map(f => f.icao24));
 
-// ─── TICKER ──────────────────────────────────────────────────────────────────
+  // Remove stale
+  for (const icao of Object.keys(markers)) {
+    if (!currentIcaos.has(icao)) {
+      markers[icao].remove();
+      delete markers[icao];
+    }
+  }
 
-function buildTicker() {
-  const items = [
-    `<span class="ticker-item">✈ <span>Blake Lively & Ryan Reynolds</span> approaching Nashville – ETA 18 min</span>`,
-    `<span class="ticker-item">🛬 <span>Ed Sheeran</span> on final approach into Nashville</span>`,
-    `<span class="ticker-item">✈ <span>Beyoncé & Jay-Z</span> cruising at 38,000ft over Oklahoma</span>`,
-    `<span class="ticker-item">💍 <span>Nashville venue</span> locked with full security perimeter</span>`,
-    `<span class="ticker-item">✈ <span>Cara Delevingne</span> transatlantic – 5h 20min remaining</span>`,
-    `<span class="ticker-item">⏳ <span>Lana Del Rey</span> jet delayed at JFK due to weather hold</span>`,
-    `<span class="ticker-item">✈ <span>HAIM</span> chartered jet cleared LAX airspace</span>`,
-    `<span class="ticker-item">🎉 All data is <span>SIMULATED</span> and fictional – for entertainment only</span>`,
-    `<span class="ticker-item">✈ <span>Travis Kelce</span> en route from Kansas City – runway 36L</span>`,
-    `<span class="ticker-item">🌸 <span>Sabrina Carpenter</span> approaching Nashville – 12 min to touchdown</span>`,
-  ];
-  document.getElementById('ticker-inner').innerHTML = items.join('');
+  // Add/update
+  allFlights.filter(f => !f.on_ground).forEach(f => {
+    if (markers[f.icao24]) {
+      markers[f.icao24].setLatLng([f.lat, f.lon]);
+      markers[f.icao24].setIcon(makePlaneIcon(f));
+      markers[f.icao24].setPopupContent(buildPopup(f));
+    } else {
+      const m = L.marker([f.lat, f.lon], { icon: makePlaneIcon(f) })
+        .addTo(map)
+        .bindPopup(buildPopup(f));
+      m.on('click', () => selectFlight(f.icao24));
+      markers[f.icao24] = m;
+    }
+  });
 }
 
-buildTicker();
-
-// ─── TOAST NOTIFICATIONS ─────────────────────────────────────────────────────
-
-const toastQueue = [
-  { title: '🛬 Ed Sheeran', body: 'On final approach into Nashville. ETA 9 min.' },
-  { title: '✈ Beyoncé & Jay-Z', body: 'Passed over Oklahoma City at 38,000 ft.' },
-  { title: '🚨 Alert', body: 'Cara Delevingne crossing the Atlantic – 5h out.' },
-  { title: '⏳ Lana Del Rey', body: 'Still grounded at JFK. Weather hold extended.' },
-  { title: '✈ HAIM', body: 'Cleared LA airspace heading east.' },
-  { title: '🎉 Blake Lively', body: 'Almost there! 18 minutes to Nashville.' },
-];
-
-let toastIdx = 0;
-
-function showToast({ title, body }) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<div class="toast-title">${title}</div><div>${body}</div>`;
-  document.getElementById('toast-container').appendChild(t);
-  setTimeout(() => t.remove(), 4200);
+function buildPopup(f) {
+  const altText = f.alt_ft != null ? `${f.alt_ft.toLocaleString()} ft` : '—';
+  const spdText = f.speed_kts != null ? `${f.speed_kts} kts` : '—';
+  const vrText = f.vrate != null ? `${f.vrate > 0 ? '+' : ''}${Math.round(f.vrate * 197)} fpm` : '—';
+  return `<div style="min-width:180px">
+    <div class="popup-callsign">${f.callsign}</div>
+    <div class="popup-row"><strong>ICAO24:</strong> ${f.icao24.toUpperCase()}</div>
+    <div class="popup-row"><strong>Country:</strong> ${f.country}</div>
+    <div class="popup-row"><strong>Altitude:</strong> ${altText}</div>
+    <div class="popup-row"><strong>Speed:</strong> ${spdText}</div>
+    <div class="popup-row"><strong>V/S:</strong> ${vrText}</div>
+    <div class="popup-row"><strong>Heading:</strong> ${Math.round(f.heading)}°</div>
+    <div class="popup-row"><strong>Squawk:</strong> ${f.squawk}</div>
+    <div class="popup-row"><strong>Position:</strong> ${f.lat.toFixed(4)}°, ${f.lon.toFixed(4)}°</div>
+  </div>`;
 }
 
-function nextToast() {
-  showToast(toastQueue[toastIdx % toastQueue.length]);
-  toastIdx++;
-  setTimeout(nextToast, Math.random() * 12000 + 8000);
+// ─── SELECT ──────────────────────────────────────────────────────────────────
+
+function selectFlight(icao) {
+  activeIcao = icao;
+  const f = allFlights.find(x => x.icao24 === icao);
+  if (!f) return;
+
+  renderList();
+
+  if (markers[icao]) {
+    map.flyTo([f.lat, f.lon], 12, { animate: true, duration: 0.8 });
+    markers[icao].openPopup();
+  }
+
+  // Scroll card into view
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.flight-card');
+    cards.forEach(c => { if (c.classList.contains('active')) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+  }, 50);
 }
 
-setTimeout(nextToast, 3000);
+// ─── TABS ────────────────────────────────────────────────────────────────────
 
-// ─── INITIAL ZOOM ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-flights').classList.toggle('active', tab === 'flights');
+  document.getElementById('tab-tfr').classList.toggle('active', tab === 'tfr');
+  document.getElementById('panel-flights').style.display = tab === 'flights' ? 'flex' : 'none';
+  document.getElementById('panel-tfr').style.display = tab === 'tfr' ? 'flex' : 'none';
 
-// Show first notification on load
-setTimeout(() => showToast({ title: '💍 Welcome!', body: 'Tracking 12 celebrity jets to Taylor\'s wedding. All data is simulated.' }), 1000);
+  if (tab === 'tfr') renderTFR();
+}
+
+function renderTFR() {
+  // FAA TFR data is not publicly available via a free API, so we link to the
+  // official FAA TFR viewer and show known context for this weekend.
+  const panel = document.getElementById('tfr-panel');
+  panel.innerHTML = `
+    <div class="tfr-card active-tfr">
+      <div class="tfr-badge badge-yellow">⚠ Watch</div>
+      <div class="tfr-title">Potential Event TFR – Madison Square Garden</div>
+      <div class="tfr-detail">
+        A large-scale private event is rumored at or near MSG this weekend.
+        If confirmed, the FAA typically issues a Temporary Flight Restriction
+        (TFR) covering a 1–3 NM radius up to ~3,000 ft AGL. This would not
+        affect airline traffic at JFK/EWR/LGA at cruise altitude, but could
+        cause rerouting of approaches and departures.<br><br>
+        <strong style="color:#fbbf24">Check official FAA TFRs before flying:</strong>
+      </div>
+      <div style="margin-top:8px">
+        <a href="https://tfr.faa.gov/tfr2/list.html" target="_blank"
+           style="color:#60a5fa;font-size:0.78rem;text-decoration:underline">
+          tfr.faa.gov/tfr2/list.html ↗
+        </a>
+      </div>
+    </div>
+
+    <div class="tfr-card">
+      <div class="tfr-badge badge-blue">ℹ Info</div>
+      <div class="tfr-title">NYC Airspace Overview</div>
+      <div class="tfr-detail">
+        NYC has some of the most complex airspace in the world. Key items:<br><br>
+        • <strong>Class B</strong> airspace tops at 7,000 ft, extends ~30 NM<br>
+        • <strong>KJFK, KEWR, KLGA</strong> are Class B primary airports<br>
+        • <strong>KTEB</strong> is heavily used by private/charter jets<br>
+        • Hudson River corridor (VFR corridor at ≤1,100 ft) is busy on weekends<br>
+        • LGA departure/arrival routes frequently cross over Manhattan
+      </div>
+    </div>
+
+    <div class="tfr-card">
+      <div class="tfr-badge badge-blue">ℹ NOTAM</div>
+      <div class="tfr-title">Check NOTAMs for Your Flights</div>
+      <div class="tfr-detail">
+        For current Notices to Air Missions affecting NYC-area airports this weekend:
+      </div>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+        <a href="https://www.notams.faa.gov/dinsQueryWeb/" target="_blank"
+           style="color:#60a5fa;font-size:0.78rem;text-decoration:underline">
+          FAA NOTAM Search ↗
+        </a>
+        <a href="https://pilotweb.nas.faa.gov/PilotWeb/" target="_blank"
+           style="color:#60a5fa;font-size:0.78rem;text-decoration:underline">
+          FAA PilotWeb (TFR map) ↗
+        </a>
+        <a href="https://skyvector.com/" target="_blank"
+           style="color:#60a5fa;font-size:0.78rem;text-decoration:underline">
+          SkyVector (chart + TFR overlay) ↗
+        </a>
+      </div>
+    </div>
+
+    <div class="tfr-card">
+      <div class="tfr-badge badge-blue">ℹ Delays</div>
+      <div class="tfr-title">FAA Ground Delay Programs</div>
+      <div class="tfr-detail">
+        Check live Ground Delay Programs (GDPs) and Ground Stops affecting KJFK, KEWR, KLGA:
+      </div>
+      <div style="margin-top:8px">
+        <a href="https://nasstatus.faa.gov/" target="_blank"
+           style="color:#60a5fa;font-size:0.78rem;text-decoration:underline">
+          FAA NAS Status ↗
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+// ─── STATUS ──────────────────────────────────────────────────────────────────
+
+function setStatus(state, text) {
+  const dot = document.getElementById('status-dot');
+  dot.className = `status-dot ${state}`;
+  document.getElementById('status-text').textContent = text;
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+// ─── AUTO-REFRESH ────────────────────────────────────────────────────────────
+
+// OpenSky anonymous rate limit: 1 request per 10 seconds, 400 per day
+// We poll every 30 seconds to stay well within limits
+fetchFlights();
+setInterval(fetchFlights, 30000);
 </script>
 </body>
 </html>
