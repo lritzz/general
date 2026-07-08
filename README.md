@@ -48,3 +48,33 @@ After that, every new rule will trigger an email automatically.
 ## Manual trigger
 
 You can also trigger the workflow manually at any time via the **Run workflow** button in the Actions tab.
+
+## Push / Claude app notifications
+
+In addition to email, new proposed rules can be reported as a phone push notification and
+a chat message from a live Claude Code session, using `scripts/check_federal_register_push.py`.
+
+This script mirrors `check_federal_register.py` but:
+- Tracks its own dedup state in `state/last_push_document_number.txt` (separate from the
+  email workflow's state file, so the two channels don't interfere with each other).
+- Prints new rules as JSON instead of sending email — a Claude session reads that JSON and
+  is responsible for actually sending the push notification / chat message.
+
+**Important limitation:** push notifications and Claude app messages can only be sent by an
+*active Claude Code session* — plain GitHub Actions runners (which power the email workflow
+above) have no way to trigger them. So, unlike the email workflow, this is not fully
+"set and forget" on GitHub's infrastructure alone. To get push notifications every time a
+new proposed rule is published, you need one of:
+
+1. A recurring **Trigger** configured for this repo in the Claude Code on the web dashboard
+   (see [the docs](https://code.claude.com/docs/en/claude-code-on-the-web)), scheduled on the
+   same cadence as the email workflow (hourly on weekdays). Each firing starts a fresh session
+   that runs the push-check script and notifies on anything new. This is the durable option.
+2. A session-scoped recurring check (e.g. via the `CronCreate` tool) kept alive in an open
+   Claude Code session — bounded to that session's lifetime and, at most, 7 days.
+
+To seed the push state without notifying about already-published rules, run:
+
+```
+python scripts/check_federal_register_push.py --init
+```
