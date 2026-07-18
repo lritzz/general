@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Monitor the Federal Register for new proposed rules and send email notifications."""
 
+import json
 import os
 import smtplib
 import sys
@@ -11,6 +12,8 @@ from pathlib import Path
 import requests
 
 STATE_FILE = Path(__file__).parent.parent / "state" / "last_document_number.txt"
+RULE_LOG_FILE = Path(__file__).parent.parent / "state" / "rule_log.json"
+RULE_LOG_MAX_ENTRIES = 50
 FR_API = "https://www.federalregister.gov/api/v1/documents.json"
 EMAIL_TO = os.environ.get("EMAIL_TO", "lucy.ritzmann@governingforimpact.org")
 
@@ -46,6 +49,40 @@ def load_seen():
 def save_seen(doc_numbers):
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text("\n".join(sorted(doc_numbers)) + "\n")
+
+
+def append_rule_log(new_rules):
+    """Persist full rule details (title/date/url/abstract) for downstream
+    consumers (e.g. a push-notification task) that can't hit the Federal
+    Register API directly and would otherwise have to re-scrape the web."""
+    RULE_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    existing = []
+    if RULE_LOG_FILE.exists():
+        try:
+            existing = json.loads(RULE_LOG_FILE.read_text())
+        except json.JSONDecodeError:
+            existing = []
+    existing.extend(
+        {
+            "document_number": r["document_number"],
+            "title": r.get("title", "Unknown Title"),
+            "publication_date": r.get("publication_date", "Unknown Date"),
+            "html_url": r.get("html_url", "N/A"),
+            "abstract": r.get("abstract"),
+        }
+        for r in new_rules
+    )
+    # Keep only the most recent entries, de-duplicated by document number.
+    seen_numbers = set()
+    deduped = []
+    for entry in reversed(existing):
+        if entry["document_number"] in seen_numbers:
+            continue
+        seen_numbers.add(entry["document_number"])
+        deduped.append(entry)
+    deduped.reverse()
+    deduped = deduped[-RULE_LOG_MAX_ENTRIES:]
+    RULE_LOG_FILE.write_text(json.dumps(deduped, indent=2) + "\n")
 
 
 def plain_language_summary(abstract, title):
@@ -148,6 +185,7 @@ def main():
         seen.add(rule["document_number"])
         print(f"Processed: {rule['document_number']} — {rule.get('title', '')[:80]}")
 
+    append_rule_log(new_rules)
     save_seen(seen)
 
 
