@@ -48,3 +48,14 @@ After that, every new rule will trigger an email automatically.
 ## Manual trigger
 
 You can also trigger the workflow manually at any time via the **Run workflow** button in the Actions tab.
+
+## Claude push-notification channel
+
+In addition to the email workflow above, a Claude Code scheduled task periodically
+checks this repo and pushes a phone notification + chat message when a new
+proposed rule appears, using the same [Federal Register API](https://www.federalregister.gov/developers/api/v1)
+query. It tracks what it has already announced in `state/claude_notified.txt`
+(separate from `state/last_document_number.txt` so it never suppresses the
+email workflow's own notifications). That state file was seeded on first run
+from the existing `state/last_document_number.txt` backlog, so only rules
+published after setup trigger a push/chat notification.
